@@ -9,14 +9,15 @@ import urllib
 import subprocess 
 
 ipSpace = dict(
-	test='173.194.207.139' # google.com
+	test=''
 )
 
 # terminal commands
 com1 = "timeout 2s echo | openssl s_client -connect "
 
 # parses the certificate as if it were DER encoded
-com2 = ":443 2>/dev/null | openssl x509 -inform der -noout -dates"
+com2 = ":443 2>/dev/null | openssl x509 -noout -dates"
+#-inform der
 
 f = open('ssl_checkList.txt', 'w')
 
@@ -27,6 +28,7 @@ for key in ipSpace.keys():
 	r = iptools.IpRangeList(ipSpace[key])
 	
 	for ip in r: 
+		print ip
 		# resets value of output
 		output = None
 		

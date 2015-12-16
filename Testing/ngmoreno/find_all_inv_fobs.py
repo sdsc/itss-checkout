@@ -5,11 +5,11 @@
 
 
 import logging
+from subprocess import call
+import subprocess
 logging.basicConfig(level=logging.INFO)
-logging.getLogger('suds.client').setLevel(logging.DEBUG)
 
-from Tkinter import *
-from suds.client import Client
+#from Tkinter import *
 
 def inFilter(inData, inKey, inFilterList):
 	outData = []
@@ -31,81 +31,102 @@ def outFilter(inData, inKey, inFilterList):
 			outData.append(datum)
 	return outData
 
-def updateStatus(inUserData,status):
-	for user in inUserData:
-		client.service.setStatus(user,status)
+#class login:
+#	
+#	def __init__(self):
+#		self.prompt = Tk()
+#		
+#		self.e_url  = Entry(self.prompt,width=15)
+#		self.e_proxy= Entry(self.prompt,width=15)
+#		self.e_user = Entry(self.prompt,width=15)
+#		self.e_pass = Entry(self.prompt, show="b", width=15)
+#
+#		self.e_url.grid(row=1,column=0) 		
+#		self.e_proxy.grid(row=2,column=0) 
+#		self.e_user.grid(row=3,column=0) 
+#		self.e_pass.grid(row=4,column=0)
+#		
+#		Button(self.prompt, text='Login', command=self.closePrompt).grid(row=5, column=0, sticky=W, pady=4)
+#		
+#		self.prompt.mainloop( )
+#
+#	def closePrompt(self):
+#		self.url = str(self.e_url.get())
+#		self.proxy = str(self.e_proxy.get())
+#		self.username = str(self.e_user.get())
+#		self.password = str(self.e_pass.get())
+#
+#		self.e_url.delete(0,END)		
+#		self.e_proxy.delete(0,END)
+#		self.e_user.delete(0,END)
+#		self.e_pass.delete(0,END)
+#		
+#		self.prompt.quit()
+#
+#	def getCreds(self):
+#		return [self.url, self.proxy, self.username, self.password]
 
-class login:
+
+# Produces Login GUI
+#loginWindow = login()
+#creds = loginWindow.getCreds()
+
+# Set Parameters
+#url = creds[0]
+#proxy_url = creds[1]
+#username = creds[2]
+#password = creds[3]
+
+col = ' "*" ' # this should be the columns required to reference the SecureID database"
+table = ' "Employee Checkout" '
+reqCol = ' "Status" '
+reqVal = "Pending"
+
+
+url = ""
+proxy = ""
+un = ""
+pw = ""
+
+class footprints_client:
 	
-	def __init__(self):
-		self.prompt = Tk()
+	def __init__(self, username, password, url, proxy):
+		self.username = username
+		self.password = password
+		self.url = url
+		self.proxy = proxy
+		self.connection_params = un+" "+pw+" "+url+" "+proxy
+
+	def query(self, col, table, filterDict):
+		command = "perl fpQuery.pl"
+		command += " "
 		
-		self.e_url  = Entry(self.prompt,width=15)
-		self.e_proxy= Entry(self.prompt,width=15)
-		self.e_user = Entry(self.prompt,width=15)
-		self.e_pass = Entry(self.prompt, show="b", width=15)
-
-		self.e_url.grid(row=1,column=0) 		
-		self.e_proxy.grid(row=2,column=0) 
-		self.e_user.grid(row=3,column=0) 
-		self.e_pass.grid(row=4,column=0)
+		for col in cols:
+			command += col
+			if len(cols) > 1:
+				command += ","
 		
-		Button(self.prompt, text='Login', command=self.closePrompt).grid(row=5, column=0, sticky=W, pady=4)
-		
-		self.prompt.mainloop( )
+		command += " "
+		command += "from" + " " + table
+		command += " "
 
-	def closePrompt(self):
-		self.url = str(self.e_url.get())
-		self.proxy = str(self.e_proxy.get())
-		self.username = str(self.e_user.get())
-		self.password = str(self.e_pass.get())
+		command += "where" + " "
 
-		self.e_url.delete(0,END)		
-		self.e_proxy.delete(0,END)
-		self.e_user.delete(0,END)
-		self.e_pass.delete(0,END)
-		
-		self.prompt.quit()
-
-	def getCreds(self):
-		return [self.url, self.proxy, self.username, self.password]
+		for key in filterDict.keys():
+			command += key + " = " + fiterDict[key]
+			command += " or "
+	
+		try:
+			output = subprocess.check_output(com, shell=True)
+		except:
 
 
-loginWindow = login()
-creds = loginWindow.getCreds()
+client = footprints_client(un,pw,url,proxy)
 
-url = creds[0]
-proxy_url = creds[1]
-username = creds[2]
-password = creds[3]
-
-
-client = Client(url)
-
-# Proxy
-d = dict(https=proxy_url)
-client.set_options(proxy=d)
-
-print client
-
-
-# Authorization
-#token = client.factory.create('AuthToken')
-#token.username = username
-#token.password = password
-#client.set_options(soapheaders=token) 
-
-
-# Query checkout
-# TODO: Correct function and input paramaters
-#checkoutData = client.service.checkout()
-
-
-# TODO: Process response into dictionary if not already done
-
-
+# TODO: input correct filter value
 # Search for pending
-#pendingData = filterData(checkoutData,'status',['pending'])
+client.query("","",{'':''})
+
 
 
 # Query secureID API
