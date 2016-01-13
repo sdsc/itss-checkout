@@ -7,6 +7,7 @@ import iptools # pip install iptools - provides ip handling
 from subprocess import call # provides calls to terminal function
 import urllib
 import subprocess
+import pprint
 
 # here for parsing file produced above
 def parseData(in_filename):
@@ -30,8 +31,6 @@ def generateNmap(ipSpace, output_filename):
             # executes terminal command with ip
             
             # EXAMPLE OUTPUT --- begin ---
-            # nmap 192.168.1.1
-            #
             # Starting Nmap 6.40 ( http://nmap.org ) at 2016-01-11 10:45 PST
             # Nmap scan report for example-host.com (192.168.1.1)
             # Host is up (0.00025s latency).
@@ -47,7 +46,7 @@ def generateNmap(ipSpace, output_filename):
             except subprocess.CalledProcessError as e:
                 output = e.output
 
-
+	
 
 
 # parse nmap to get list of hosts and open ports
@@ -58,17 +57,19 @@ def parseNmap(filename):
     for line in parseData(filename):
         if line == "\n":
             flag = 0
-        words = line.split(" ")
-        if words[0] == "Nmap":
-            if len(words) == 5:
-                ip = words[4]
-            else: ip = words[5][1:len(words[5])-2]
-            ips[ip] = []
-        if flag == 1:
-            port = words[0][:words[0].index("/")]
-            ips[ip].append(port)
-        if words[0] == "PORT":
-            flag = 1
+        else:
+	    words = line.split(" ")
+            if words[0] == "Nmap" and words[1] == "scan":
+                if len(words) == 5:
+                    ip = words[4]
+                else: 
+		    ip = words[5][1:len(words[5])-2]
+                ips[ip] = []
+            if flag == 1:
+                port = words[0][:words[0].index("/")]
+                ips[ip].append(port)
+            if words[0] == "PORT":
+                 flag = 1
     return ips
 
 
@@ -76,12 +77,11 @@ def parseNmap(filename):
 
 
 # loops through all parsed IPs
-def getAllSSL(ips)
+def getAllSSL(hostsDict):
     f = open('ssl_checkList.txt', 'w')
-    for ip in ips:
-        for port in ips[ip]:
-            target = ip + ":" + port
-            result = getSSL(target)
+    for host in hostsDict:
+        for port in hostsDict[host]:
+            result = getSSL(host+":"+port) + "\n"
         f.write(result)
     f.close()
 
@@ -89,18 +89,17 @@ def getAllSSL(ips)
 
 
 
-def getSSL(ip):
+def getSSL(host):
     # terminal commands
-    # add this to parseSSLcom for DER encoded certs: -inform der
-    getSSLcom = "timeout 2s echo | openssl s_client -connect "
-    parseSSLcom = " 2>/dev/null | openssl x509 -noout -dates"
+    # add this for DER encoded certs: -inform der
+    command = "timeout 2s echo | openssl s_client -connect " + host + " 2>/dev/null | openssl x509 -noout -dates"
     
     # resets value of output
     output = None
         
     # executes terminal command with ip
     try:
-        output = subprocess.check_output([getSSLcom+ target +parseSSLcom], shell=True)
+        output = subprocess.check_output([command], shell=True)
     except subprocess.CalledProcessError as e:
         output = e.output
     
@@ -110,15 +109,24 @@ def getSSL(ip):
     try:
         nl_index = output.index("\n")
     except:
-        result = target + " - error"
+        result = host + " - error"
         flag = 1
         pass
             
     if (not flag):
-        result = target + " " + output[nl_index+1:len(output)-1]
+        result = host + " " + output[nl_index+1:len(output)-1]
 
     return result
 
+def filter_hosts_by_port(hosts,ports):
+    outDict = {}
+    for host in hosts:
+	for port in ports:
+	    if port in hosts[host]:
+	        if outDict.get(host) == None:
+		    outDict[host] = []
+		outDict[host].append(port)
+    return outDict		
 
 
 targets = dict(
@@ -127,7 +135,13 @@ targets = dict(
 nmap_filename = "nmap_data.txt"
 
 
-nmap = generateNmap(targets,nmap_filename)
-target_ips = parseNmap(nmap_filename)
-getAllSSL(target_ips)
+#nmap = generateNmap(targets,nmap_filename)
+
+target_hosts = parseNmap(nmap_filename)
+pprint.pprint(target_hosts)
+
+filtered_hosts = filter_hosts_by_port(target_hosts,["443","8443"])
+pprint.pprint(filtered_hosts)
+
+getAllSSL(filtered_hosts)
 
