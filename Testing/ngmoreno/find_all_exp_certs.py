@@ -9,6 +9,30 @@ import urllib
 import subprocess
 import pprint
 
+class Window:
+	
+	def __init__(self):
+		self.prompt = Tk()
+		
+		self.e_url  = Entry(self.prompt,width=15)
+
+		self.e_url.grid(row=1,column=0) 		
+		
+		Button(self.prompt, text='Add Target', command=self.closePrompt).grid(row=5, column=0, sticky=W, pady=4)
+		
+		self.prompt.mainloop( )
+
+	def closePrompt(self):
+		self.url = str(self.e_url.get())
+
+		self.e_url.delete(0,END)		
+		
+		self.prompt.quit()
+
+	def getCreds(self):
+		return [self.url, self.proxy, self.username, self.password]
+
+
 # here for parsing file produced above
 def parseData(in_filename):
     for line in urllib.urlopen(in_filename):
@@ -61,7 +85,7 @@ def parseNmap(filename):
 	    words = line.split(" ")
             if words[0] == "Nmap" and words[1] == "scan":
                 if len(words) == 5:
-                    ip = words[4]
+                    ip = words[4:len(words[4])-2]
                 else: 
 		    ip = words[5][1:len(words[5])-2]
                 ips[ip] = []
@@ -77,8 +101,8 @@ def parseNmap(filename):
 
 
 # loops through all parsed IPs
-def getAllSSL(hostsDict):
-    f = open('ssl_checkList.txt', 'w')
+def getAllSSL(hostsDict, outFile):
+    f = open(outFile, 'w')
     for host in hostsDict:
         for port in hostsDict[host]:
             result = getSSL(host+":"+port) + "\n"
@@ -128,20 +152,94 @@ def filter_hosts_by_port(hosts,ports):
 		outDict[host].append(port)
     return outDict		
 
+def addTarget(target):
+	targets["target" + str(len(targets))] = target
 
+
+"132.249.20.53:8443 notAfter=Nov 16 23:59:59 2018 GMT"	
+def parse_SSL_list(filename):
+	expDates = {}
+	for line in parseData(filename):
+		content = line.split(" ")
+		if len(content)>=6:
+			ipaddress = content[0]
+			month = content[1].split("=")[1]
+			i = 0
+			if len(content[2]) == 0: i += 1
+			day = content[2+i]
+			year = content[4+i]
+			expDates[ipaddress] = [year,month,day] 
+	return expDates
+
+import time
+def filter_by_date(inDict,monthsout):
+	
+	tyear = int(time.strftime('%Y'))
+	tmonth = int(time.strftime('%m')) + monthsout
+	tday = int(time.strftime('%d'))
+	
+	while tmonth > 12:
+		tmonth -= 12
+		tyear += 1
+
+	monthDict = {	'Jan':1,
+			'Feb':2,
+			'Mar':3,
+			'Apr':4,
+			'May':5,
+			'Jun':6,
+			'Jul':7,
+			'Aug':8,
+			'Sep':9,
+			'Oct':10,
+			'Nov':11,
+			'Dec':12
+	}
+
+
+	filtered = {}
+	for key in inDict.keys():
+		datetime = inDict[key]
+		year = int(datetime[0]) 
+		month = monthDict[datetime[1]]
+		day = int(datetime[2])
+		
+		if tyear > year or (tyear==year and tmonth >= month):
+			filtered[key] = datetime
+	return filtered
+
+
+	  
+	  
+	  
+#TODO: add subnets to target list
 targets = dict(
+example='192.168.0.1/24',
 )
 
 nmap_filename = "nmap_data.txt"
-
-
 #nmap = generateNmap(targets,nmap_filename)
+#target_hosts = parseNmap(nmap_filename)
 
-target_hosts = parseNmap(nmap_filename)
-pprint.pprint(target_hosts)
-
+#TODO: Choose Ports to filter
 filtered_hosts = filter_hosts_by_port(target_hosts,["443","8443"])
-pprint.pprint(filtered_hosts)
 
-getAllSSL(filtered_hosts)
+getAllSSL(filtered_hosts,'ssl_checkList.txt')
+
+expDates = parse_SSL_list('ssl_checkList.txt')
+filteredDict = filter_by_date(expDates,2)
+
+
+import emailer
+#TODO: Fill out parameters below
+notifier = emailer.email_client("server","port","user@email.com","password")
+email_to = ""
+
+for key in filteredDict.keys():
+	datetime = filteredDict[key]
+	year = str(datetime[0])
+	month = str(datetime[1])
+	send_email(email_to,key,year + " " + month)
+
+
 
